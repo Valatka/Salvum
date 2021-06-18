@@ -3,15 +3,38 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rules\Password;
+use App\Transformers\AuthTransformer;
+use App\Transformers\StatusTransformer;
+use League\Fractal\Manager;
 
 class AuthController extends Controller {
+    /**
+     * @var Manager
+     */
+    private $fractal;
+
+    /**
+     * @var AuthTransformer
+     */
+    private $authTransformer;
+
+    /**
+     * @var StatusTransformer
+     */
+    private $statusTransformer;
+
+
      /**
      * Create a new AuthController instance.
      *
      * @return void
      */
-    public function __construct() {
+    public function __construct(Manager $fractal, AuthTransformer $authTransformer, StatusTransformer $statusTransformer) {
         $this->middleware('auth:api', ['except' => ['login']]);
+        $this->fractal = $fractal;
+        $this->authTransformer = $authTransformer;
+        $this->statusTransformer = $statusTransformer;
     }
 
     /**
@@ -19,23 +42,17 @@ class AuthController extends Controller {
      *
      * @return \Illuminate\Http\JsonResponse
      */
-    public function login() {
-        $credentials = request(['email', 'password']);
+    public function login(Request $request) {
+        $credentials = $request->validate([
+            'email' => ['required', 'email:rfc'],
+            'password' => ['required', Password::min(4)]
+        ]);
 
-        if (! $token = auth()->attempt($credentials)) {
-            return response()->json(['error' => 'Unauthorized'], 401);
+        if (!$token = auth()->attempt($credentials)) {
+            return response()->json($this->statusTransformer-transform(false), 401);
         }
 
-        return $this->respondWithToken($token);
-    }
-
-    /**
-     * Get the authenticated User.
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function me() {
-        return response()->json(auth()->user());
+        return response()->json($this->authTransformer->transform($token));
     }
 
     /**
@@ -46,7 +63,7 @@ class AuthController extends Controller {
     public function logout() {
         auth()->logout();
 
-        return response()->json(['message' => 'Successfully logged out']);
+        return response()->json($this->statusTransformer->transform(true));
     }
 
     /**
@@ -55,21 +72,6 @@ class AuthController extends Controller {
      * @return \Illuminate\Http\JsonResponse
      */
     public function refresh() {
-        return $this->respondWithToken(auth()->refresh());
-    }
-
-    /**
-     * Get the token array structure.
-     *
-     * @param  string $token
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
-    protected function respondWithToken($token) {
-        return response()->json([
-            'access_token' => $token,
-            'token_type' => 'bearer',
-            'expires_in' => auth()->factory()->getTTL() * 60
-        ]);
+        return response()-json($this->authTransformer->transform(auth()->refresh()));
     }
 }
