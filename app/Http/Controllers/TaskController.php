@@ -16,14 +16,13 @@ use BenSampo\Enum\Rules\EnumValue;
 
 class TaskController extends Controller {
 
-
     /**
      * @var Manager
      */
     private $fractal;
 
     /**
-     * @var UserTransformer
+     * @var TaskTransformer
      */
     private $taskTransformer;
 
@@ -55,7 +54,7 @@ class TaskController extends Controller {
      * @param int $owner
      * @param int $id
      * 
-     * @return [type]
+     * @return void
      */
     private function attach(array $users, int $owner, int $id) {
         $toAttach = [];
@@ -75,7 +74,7 @@ class TaskController extends Controller {
      * 
      * @param Request $request
      * 
-     * @return string JSON
+     * @return \Illuminate\Http\JsonResponse
      */
     public function create(Request $request) {
         $data = $request->validate([
@@ -103,7 +102,7 @@ class TaskController extends Controller {
      * 
      * @param Request $request
      * 
-     * @return string JSON
+     * @return \Illuminate\Http\JsonResponse
      */
     public function update(Request $request) {
         $data = $request->validate([
@@ -132,9 +131,12 @@ class TaskController extends Controller {
      * 
      * @param int $id
      * 
-     * @return string JSON
+     * @return \Illuminate\Http\JsonResponse
      */
-    public function delete(int $id) {
+    public function delete(Request $request, int $id) {
+        validator($request->route()->parameters(), [
+            'id' => ['required', 'integer']
+        ])->validate();
         $owner = auth()->user()->id;
         $status = Task::where('owner', $owner)->where('id', $id)->delete();
         if ($status) {
@@ -147,7 +149,7 @@ class TaskController extends Controller {
     /**
      * Shows a paginated list of tasks owned by / attached to a user
      * 
-     * @return string JSON
+     * @return \Illuminate\Http\JsonResponse
      */
     public function show() {
         $user = auth()->user()->id;
@@ -167,7 +169,7 @@ class TaskController extends Controller {
      * 
      * @param Request $request
      * 
-     * @return string JSON
+     * @return \Illuminate\Http\JsonResponse
      */
     public function close(Request $request) {
         $data = $request->validate([
@@ -190,7 +192,7 @@ class TaskController extends Controller {
      * @param Request $request
      * @param int $id
      * 
-     * @return string JSON
+     * @return \Illuminate\Http\JsonResponse
      */
     public function info(Request $request, int $id) {
         validator($request->route()->parameters(), [
@@ -206,7 +208,6 @@ class TaskController extends Controller {
             return response()->json($this->statusTransformer->transform(false), 404);
         }
         return response()->json($this->taskTransformer->transform($task));
-
     }
 }
 

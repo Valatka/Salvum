@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rules\Password;
+use App\Models\User;
 use App\Transformers\AuthTransformer;
 use App\Transformers\StatusTransformer;
 use League\Fractal\Manager;
@@ -25,13 +26,17 @@ class AuthController extends Controller {
     private $statusTransformer;
 
 
-     /**
-     * Create a new AuthController instance.
-     *
+    /**
+     * Create a new AuthController instance
+     * 
+     * @param Manager $fractal
+     * @param AuthTransformer $authTransformer
+     * @param StatusTransformer $statusTransformer
+     * 
      * @return void
      */
     public function __construct(Manager $fractal, AuthTransformer $authTransformer, StatusTransformer $statusTransformer) {
-        $this->middleware('auth:api', ['except' => ['login']]);
+        $this->middleware('auth:api', ['except' => ['login', 'register']]);
         $this->fractal = $fractal;
         $this->authTransformer = $authTransformer;
         $this->statusTransformer = $statusTransformer;
@@ -52,6 +57,24 @@ class AuthController extends Controller {
             return response()->json($this->statusTransformer-transform(false), 401);
         }
 
+        return response()->json($this->authTransformer->transform($token));
+    }
+
+    /**
+     * Creates a new user
+     * 
+     * @param Request $request
+     * 
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function register(Request $request) {
+        $data = $request->validate([
+            'email' => ['required', 'email:rfc', 'unique:users,email'],
+            'password' => ['required', Password::min(4)]
+        ]);
+        $newData = ['email' => $data['email'], 'password' => bcrypt($data['password'])];
+        User::create($newData);
+        $token = auth()->attempt($data);
         return response()->json($this->authTransformer->transform($token));
     }
 

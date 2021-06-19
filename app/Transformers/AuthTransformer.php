@@ -2,7 +2,6 @@
 
 namespace App\Transformers;
 
-use App\Models\Task;
 use League\Fractal\TransformerAbstract;
 
 class AuthTransformer extends TransformerAbstract {
